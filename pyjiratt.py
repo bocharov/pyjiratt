@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import requests
 import os
 import argparse
@@ -16,6 +16,7 @@ parser.add_argument("--jira-assignee", default=os.environ["JIRA_ASSIGNEE"], help
 parser.add_argument("--jira-storypoints-field", default=os.environ["JIRA_STORYPOINTS_FIELD"], help="JIRA story points")
 parser.add_argument("--max-results", default=1000, help="maximum of issues to fetch")
 args = parser.parse_args()
+
 
 requestsParams = {
     'startIndex': '0',
@@ -40,15 +41,18 @@ for issue in issues:
                 'breakdown': {},
             }
         result[dateKey]['total'] += int(worklog['timeSpentSeconds'])
+        storyPoints = issue['fields'].get(args.jira_storypoints_field, 0) or 0
+        existingIssue = result[dateKey]['breakdown'].get(issueKey, {})
+        worklogTimeSpent = existingIssue.get('worklogTimeSpent', 0)
         result[dateKey]['breakdown'][issueKey] = {
             'title': issue['fields']['summary'],
             'link': '%sbrowse/%s' % (args.jira_url, issueKey),
             'reporter': issue['fields']['reporter']['displayName'],
             'status': issue['fields']['status']['statusCategory']['name'],
-            'worklogTimeSpent': int(worklog['timeSpentSeconds']),
+            'worklogTimeSpent': worklogTimeSpent + int(worklog['timeSpentSeconds']),
             'originalEstimate': int(issue['fields']['timetracking'].get(
                 'originalEstimateSeconds',
-                issue['fields'][args.jira_storypoints_field] * 3600
+                storyPoints * 3600
             )),
             'totalTimeSpent': int(issue['fields']['timetracking']['timeSpentSeconds']),
         }
