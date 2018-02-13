@@ -3,9 +3,21 @@ import requests
 import os
 import argparse
 import dateutil.parser
+import datetime
+
+
+def start_of_week() -> datetime.date:
+    now = datetime.datetime.now()
+    return datetime.date(now.year, now.month, now.day - now.weekday())
+
+
+def start_of_month() -> datetime.date:
+    now = datetime.datetime.now()
+    return datetime.date(now.year, now.month, 1)
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--since", default="startOfWeek()", help="date in YYYY-MM-DD format or JIRA date function")
+parser.add_argument("--since", default="start_of_week()", help="date in YYYY-MM-DD format or date function")
 parser.add_argument("--until", help="date in YYYY-MM-DD format or JIRA date function")
 parser.add_argument("-v", action="store_true", help="increase output verbosity")
 parser.add_argument("-vv", action="store_true", help="increase output verbosity more")
@@ -17,10 +29,14 @@ parser.add_argument("--jira-storypoints-field", default=os.environ["JIRA_STORYPO
 parser.add_argument("--max-results", default=1000, help="maximum of issues to fetch")
 args = parser.parse_args()
 
+if "(" in args.since:
+    since = eval(args.since)
+else:
+    since = dateutil.parser.parse(args.since).date()
 
 requestsParams = {
     'startIndex': '0',
-    'jql': 'assignee = %s AND timespent > 0 AND worklogDate >= %s' % (args.jira_assignee, args.since),
+    'jql': 'assignee = %s AND timespent > 0 AND worklogDate >= %s' % (args.jira_assignee, since),
     'fields': 'key,worklog,summary,reporter,link,status,timetracking,%s' % args.jira_storypoints_field,
     'maxResults': args.max_results,
 }
@@ -32,7 +48,9 @@ for issue in issues:
     workLogs = issue['fields']['worklog']['worklogs']
     issueKey = issue['key']
     for worklog in workLogs:
-        date = dateutil.parser.parse(worklog['started'])
+        date = dateutil.parser.parse(worklog['started']).date()
+        if date < since:
+            continue
         dateKey = date.strftime('%Y-%m-%d %a')
 
         if dateKey not in result:
