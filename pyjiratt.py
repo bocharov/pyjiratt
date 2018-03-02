@@ -8,7 +8,7 @@ import datetime
 
 def start_of_week() -> datetime.date:
     now = datetime.datetime.now()
-    return datetime.date(now.year, now.month, now.day - now.weekday())
+    return (now - datetime.timedelta(days=now.weekday())).date()
 
 
 def start_of_month() -> datetime.date:
@@ -75,11 +75,18 @@ for issue in issues:
             'totalTimeSpent': int(issue['fields']['timetracking']['timeSpentSeconds']),
         }
 
+
+def prettyTime(time) -> str:
+    m, _ = divmod(time, 60)
+    h, m = divmod(m, 60)
+    return "%dh%dm" % (h, m)
+
+
 for key in sorted(result):
-    print("%s: %dh" % (key, result[key]['total'] / 3600))
+    print("%s: %s" % (key, prettyTime(int(result[key]['total']))))
     if args.v:
         for issueKey, issue in result[key]['breakdown'].items():
-            print("    %s: %dh" % (issueKey, int(issue['worklogTimeSpent']) / 3600))
+            print("    %s: %s" % (issueKey, prettyTime(int(issue['worklogTimeSpent']))))
     elif args.vv:
         for issueKey, issue in result[key]['breakdown'].items():
             print("  %s:" % issueKey)
@@ -87,8 +94,8 @@ for key in sorted(result):
             print("    Link: %s" % issue['link'])
             print("    Status: %s" % issue['status'])
             print("    Reporter: %s" % issue['reporter'])
-            print("    Worklog timespent: %dh" % (issue['worklogTimeSpent'] / 3600))
-            print("    Original estimate: %dh" % (issue['originalEstimate'] / 3600))
-            print("    Total timespent: %dh" % (issue['totalTimeSpent'] / 3600))
+            print("    Worklog timespent: %s" % (prettyTime(issue['worklogTimeSpent'])))
+            print("    Original estimate: %s" % (prettyTime(issue['originalEstimate'])))
+            print("    Total timespent: %s" % (prettyTime(issue['totalTimeSpent'])))
             if issue['originalEstimate']:
                 print("    Estimate accuracy: %5.2f%%" % (issue['totalTimeSpent'] * 100.0 / issue['originalEstimate']))
